@@ -1,0 +1,5 @@
+﻿- An operation is "Atomic" if it cannot be interrupted or separated into parts
+    - ex: "X = 1" is atomic
+    - ex: "X++" is NOT atomic - can be a race condition
+    
+    
