@@ -2,4 +2,15 @@
     - ex: "X = 1" is atomic
     - ex: "X++" is NOT atomic - can be a race condition
     
+    lock(object) is shorthand for Monitor.Lock
+    
+    Problem - CPU can reorder instructions
+    Solution - Thread.MemoryBarrier() - no instructions below the barrier can happen before the ones above
+    
+    Mutex is a type of "Wait Handle" that can be shared across programs
+    - prevents several copies of a the same program from being exectured
+    
+    
+    
+    
     

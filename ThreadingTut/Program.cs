@@ -23,50 +23,92 @@ namespace ThreadingTut {
             }
 
             public void Deposit(int amount) {
-
-                Interlocked.Add(ref balance, amount);
-
-//                lock (padlock) {
-//                    Balance = Balance + amount;
-//                }
+                balance += amount;
             }
 
             public void Withdraw(int amount) {
-                Interlocked.Add(ref balance, -amount);
+                balance -= amount;
             }
-            
+
+            public void Transfer(BankAccount other, int amount) {
+                Withdraw(amount);
+                other.Deposit(amount);
+            }
+
+            public void Print() {
+                Console.WriteLine($"{ToString()}'s balance is: ${balance}");
+            }
             
         }
         
         static void Main(string[] args) {
 
+            UseMutexToTransferFunds();
+            
+        }
+
+        
+        static void OnFinishedMain() {
+            Console.WriteLine("Main program done");
+            Console.ReadKey();
+        }
+        
+        static void UseMutexToTransferFunds() {
             var tasks = new List<Task>();
             var ba = new BankAccount();
+            var ba2 = new BankAccount();
 
+//            SpinLock sl = new SpinLock();
+            Mutex mutex = new Mutex();
+            Mutex mutex2 = new Mutex();
+            
             for (int i = 0; i < 10; i++) {
                 tasks.Add(Task.Factory.StartNew(() => {
                     for (int j = 0; j < 1000; j++) {
-                        ba.Deposit(100);
+                        bool haveLock = mutex.WaitOne();
+                        try {
+                            ba.Deposit(100);
+                        }
+                        finally {
+                            if (haveLock) mutex.ReleaseMutex();
+                        }
                     }
                 }));
                 
                 tasks.Add(Task.Factory.StartNew(() => {
                     for (int j = 0; j < 1000; j++) {
-                        ba.Withdraw(100);
+                        bool haveLock = mutex.WaitOne();
+                        try {
+                            ba2.Deposit(100);
+                        }
+                        finally {
+                            if (haveLock) mutex.ReleaseMutex();
+                        }
+                    }
+                }));
+                
+                tasks.Add(Task.Factory.StartNew(() => {
+                    for (int j = 0; j < 1000; j++) {
+                        //can only get this lock if both mutex' are available
+                        Mutex[] muts = new[] {mutex, mutex2};
+                        bool haveLock = WaitHandle.WaitAll(muts);
+                        try {
+                            ba.Transfer(ba2, 1);
+                        }
+                        finally {
+                            if (haveLock) {
+                                foreach (Mutex mut in muts) 
+                                    mut.ReleaseMutex();
+                            }
+                        }
                     }
                 }));
             }
 
             Task.WaitAll(tasks.ToArray());
             
-            Console.WriteLine(ba.Balance);
-            
-            
-        }
-        
-        static void OnFinishedMain() {
-            Console.WriteLine("Main program done");
-            Console.ReadKey();
+            ba.Print();
+            ba2.Print();
         }
 
         static void ExceptionHandlingExample() {
